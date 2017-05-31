@@ -7,10 +7,22 @@ def get_args(argv=None):
     parser.add_argument('regex')
     return parser.parse_args()
 
-def unnested_parentheses():
+def unnested_parentheses(regex):
     '''Expressions in parentheses.'''
-    pass
-
+    parentheses = []
+    start = []
+    parentheses = []
+    alt = []
+    for index,character in enumerate(regex):
+        if character == '(':
+            start.append(index)
+        elif character == ')':
+            parentheses.append([start.pop(),index])
+        elif character == '|':
+            alt.append(index)
+    parentheses.append(alt)
+    return parentheses
+    
 def unnested_brackets(regex):
     '''Expressions in brackets.'''
     brackets = []
@@ -45,19 +57,33 @@ def unnested_brackets(regex):
                         brackets.append([start,end])
                         has_braces = False
                         end_brackets = False
-            continue
     return brackets
+
+def mark_positions(regex,positions,mark):
+    '''Mark positions of regex with defined character.'''
+    marks = ''
+    flatten_positions = [ item for sublist in positions for item in sublist ]
+    for index,character in enumerate(regex):
+        if index in flatten_positions:
+            marks += mark
+        else:
+            marks += ' '
+    return marks
+
+def merge_marks(marks1,marks2):
+    '''Merge strings of position marks.'''
+    merged_marks = list(marks1)
+    for index,character in enumerate(marks2):
+        if merged_marks[index] == ' ':
+            merged_marks[index] = character
+    return ''.join(merged_marks)
 
 if __name__ == "__main__":
     args = get_args()
-    brackets = unnested_brackets(args.regex)
     print args.regex
-    marks = ''
-    flatten_brackets = [ item for sublist in brackets for item in sublist ]
-    for index,character in enumerate(args.regex):
-        if index in flatten_brackets:
-            marks += '|'
-        else:
-            marks += ' '
-    print marks
-#brackets,braces,parentheses
+    brackets = unnested_brackets(args.regex)
+    brackets_marks = mark_positions(args.regex,brackets,'|')
+    parentheses = unnested_parentheses(args.regex)
+    parentheses_marks = mark_positions(args.regex,parentheses,':')
+    print merge_marks(brackets_marks,parentheses_marks)
+
