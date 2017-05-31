@@ -18,18 +18,18 @@ def unnested_brackets(regex):
     end = None
     end_brackets = False
     has_braces = False
-#    had_bracket = False
     for index,character in enumerate(regex):
         if character == '[':
-#            if not had_bracket:
-                start = index
-#                had_bracket == True
-#                continue
-#            else:
-#                brackets.append(unnested_brackets(regex[index:-2]))
+            if end_brackets:
+                brackets.append([start,end])
+                end_brackets = False
+            start = index
         elif character == ']':
             end = index
             end_brackets = True
+            if index == len(regex) - 1:
+                brackets.append([start,end])
+                end_brackets = False
         else:
             if end_brackets:
                 if character == '{':
@@ -51,6 +51,13 @@ def unnested_brackets(regex):
 if __name__ == "__main__":
     args = get_args()
     brackets = unnested_brackets(args.regex)
-    print brackets
-
+    print args.regex
+    marks = ''
+    flatten_brackets = [ item for sublist in brackets for item in sublist ]
+    for index,character in enumerate(args.regex):
+        if index in flatten_brackets:
+            marks += '|'
+        else:
+            marks += ' '
+    print marks
 #brackets,braces,parentheses
