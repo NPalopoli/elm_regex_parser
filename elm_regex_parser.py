@@ -12,16 +12,27 @@ def unnested_parentheses(regex):
     parentheses = []
     start = []
     parentheses = []
+    parentheses_alt = []
     alt = []
     for index,character in enumerate(regex):
         if character == '(':  # start of group or position of interest
             start.append(index)
         elif character == ')':  # end of group or position of interest
             parentheses.append([start.pop(),index])
-        elif character == '|':  # alternative groups
+        elif character == '|':  # marker of alternative groups
             alt.append(index)
-    parentheses.append(alt)
-    return parentheses
+    for index in alt:  # alternative groups
+        index_before = index - 1
+        index_after = index + 1
+        for sublist in parentheses:
+            if sublist[1] == index_before: #or sublist[0] == index_after:  # if close parenthesis is followed by '|' or if open parenthesis follows '|'
+                parentheses_alt.append(sublist)
+                parentheses.remove(sublist)
+            if sublist[0] == index_after:
+                parentheses_alt.append(sublist)
+                parentheses.remove(sublist)
+    parentheses_alt.append(alt)
+    return parentheses, parentheses_alt
     
 def unnested_brackets(regex):
     '''Expressions in brackets.'''
@@ -117,7 +128,6 @@ def unnested_characters(regex):
                         start = None
                         end = None
     return characters
-            
 
 def mark_positions(regex,positions,mark):
     '''Mark positions of regex with defined character.'''
@@ -142,10 +152,12 @@ if __name__ == "__main__":
     args = get_args()
     print args.regex
     brackets = unnested_brackets(args.regex)
-    brackets_marks = mark_positions(args.regex,brackets,'|')
-    parentheses = unnested_parentheses(args.regex)
-    parentheses_marks = mark_positions(args.regex,parentheses,':')
+    brackets_marks = mark_positions(args.regex,brackets,'!')
+    parentheses, parentheses_alt = unnested_parentheses(args.regex)
+    parentheses_marks = mark_positions(args.regex,parentheses,';')
     all_marks = merge_marks(brackets_marks,parentheses_marks)
+    parentheses_alt_marks = mark_positions(args.regex,parentheses_alt,':')
+    all_marks = merge_marks(all_marks,parentheses_alt_marks)
     characters = unnested_characters(args.regex)
     characters_marks = mark_positions(args.regex,characters,'*')
     all_marks = merge_marks(all_marks,characters_marks)
