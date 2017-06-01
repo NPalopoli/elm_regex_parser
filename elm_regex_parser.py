@@ -14,11 +14,11 @@ def unnested_parentheses(regex):
     parentheses = []
     alt = []
     for index,character in enumerate(regex):
-        if character == '(':
+        if character == '(':  # start of group or position of interest
             start.append(index)
-        elif character == ')':
+        elif character == ')':  # end of group or position of interest
             parentheses.append([start.pop(),index])
-        elif character == '|':
+        elif character == '|':  # alternative groups
             alt.append(index)
     parentheses.append(alt)
     return parentheses
@@ -59,6 +59,66 @@ def unnested_brackets(regex):
                         end_brackets = False
     return brackets
 
+def unnested_characters(regex):
+    '''Isolated letters or dots.'''
+    characters = []
+    start = None
+    end = None
+    has_braces = False
+    has_brackets = False
+    for index,character in enumerate(regex):
+        if character == '^' and not has_brackets:  # N-term
+            start = index
+        elif ( character.isalpha() or character == '.' ) and ( not has_brackets ):  # AA or dots
+            start = index
+            if index < len(regex) - 1:  # not last position in regex
+                if regex[index+1] != '{':  # check if not followed by braces
+                    end = index
+                    characters.append([start,end])
+                    start = None
+                    end = None
+            else:  # last position in regex
+                end = index
+                characters.append([start,end])
+                start = None
+                end = None
+        elif character == '[':  # start of variable position
+            has_brackets = True
+            if start != None:
+                end = index - 1
+                characters.append([start,end])
+                start = None
+                end = None
+        elif character == ']':  # end of variable position
+            has_brackets = False
+        elif character == '(':  # start of group or position of interest
+            if start != None:
+                end = index - 1
+                characters.append([start,end])
+                start = None
+                end = None
+        elif character == ')':  # end of group or position of interest
+            start = None
+            end = None
+        elif character == '$' and not has_brackets:  # C-term
+            end = index
+            characters.append([start,end])
+            start = None
+            end = None
+        else:  # variable number of positions
+            if character == '{':
+                has_braces = True
+            else:
+                if has_braces:
+                    if character == '}':
+                        end = index
+                        characters.append([start,end])
+                        has_braces = False
+                        start = None
+                        end = None
+    return characters
+            
+
 def mark_positions(regex,positions,mark):
     '''Mark positions of regex with defined character.'''
     marks = ''
@@ -85,5 +145,9 @@ if __name__ == "__main__":
     brackets_marks = mark_positions(args.regex,brackets,'|')
     parentheses = unnested_parentheses(args.regex)
     parentheses_marks = mark_positions(args.regex,parentheses,':')
-    print merge_marks(brackets_marks,parentheses_marks)
+    all_marks = merge_marks(brackets_marks,parentheses_marks)
+    characters = unnested_characters(args.regex)
+    characters_marks = mark_positions(args.regex,characters,'*')
+    all_marks = merge_marks(all_marks,characters_marks)
+    print all_marks
 
