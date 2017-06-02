@@ -24,13 +24,14 @@ def unnested_parentheses(regex):
     for index in alt:  # alternative groups
         index_before = index - 1
         index_after = index + 1
-        for sublist in parentheses:
-            if sublist[1] == index_before: #or sublist[0] == index_after:  # if close parenthesis is followed by '|' or if open parenthesis follows '|'
+        parentheses_tmp = parentheses[:]
+        for sublist in parentheses_tmp:
+            if sublist[1] == index_before or sublist[0] == index_after:  # if close parenthesis is followed by '|' or if open parenthesis follows '|'
                 parentheses_alt.append(sublist)
                 parentheses.remove(sublist)
-            if sublist[0] == index_after:
-                parentheses_alt.append(sublist)
-                parentheses.remove(sublist)
+#            if sublist[0] == index_after:
+#                parentheses_alt.append(sublist)
+#                parentheses.remove(sublist)
     parentheses_alt.append(alt)
     return parentheses, parentheses_alt
     
@@ -39,18 +40,29 @@ def unnested_brackets(regex):
     brackets = []
     start = None
     end = None
+    has_parentheses = True
+    start_parentheses = None
     end_brackets = False
     has_braces = False
     for index,character in enumerate(regex):
         if character == '[':
             if end_brackets:
                 brackets.append([start,end])
-                end_brackets = False
+#                end_brackets = False
             start = index
+            if regex[index - 1] == '(':  # mark start of parentheses surrounding brackets
+                has_parentheses = True
+                start_parentheses = index - 1
+            else:
+                start = index
         elif character == ']':
             end = index
             end_brackets = True
-            if index == len(regex) - 1:
+            if index == len(regex) - 2 and regex[index + 1] == '$':
+                end = index + 1
+                brackets.append([start,end])
+                end_brackets = False
+            if index == len(regex) - 1:  # last position of the regex
                 brackets.append([start,end])
                 end_brackets = False
         else:
@@ -60,11 +72,21 @@ def unnested_brackets(regex):
                 else:
                     if has_braces:
                         if character == '}':
-                            end = index
+#                            end = index
+                            if index < len(regex) - 1 and regex[index + 1] == '$':
+                                end = index + 1
+                            else:
+                                end = index
                             brackets.append([start,end])
                             has_braces = False
                             end_brackets = False
                     else:
+                        if character == ')' and has_parentheses:
+                            if ( index == len(regex) - 1 or ( index < len(regex) - 1 and regex[index + 1] == '$' )) and ( index < len(regex) - 1 and regex[index + 1] != '|' ):  # last position or last before C-term mark, and not before '|'
+                                start = start_parentheses
+                                end = index
+                                has_parentheses = False
+                                start_parentheses = None
                         brackets.append([start,end])
                         has_braces = False
                         end_brackets = False
@@ -75,16 +97,30 @@ def unnested_characters(regex):
     characters = []
     start = None
     end = None
+    has_parentheses = False
     has_braces = False
     has_brackets = False
     for index,character in enumerate(regex):
         if character == '^' and not has_brackets:  # N-term
             start = index
         elif ( character.isalpha() or character == '.' ) and ( not has_brackets ):  # AA or dots
-            start = index
+            if regex[index - 1] != '^':  # not first character after '^'
+                start = index
+            elif regex[index - 1] == '(':  # first character in group or position of interest
+                start = index - 1
+                has_parentheses = True
+                continue
             if index < len(regex) - 1:  # not last position in regex
-                if regex[index+1] != '{':  # check if not followed by braces
+                if regex[index+1] == '$':
+                    start = None
+                    end = None
+                    continue
+                if regex[index+1] != '{': #and regex[index+1] != '$':  # check if not followed by braces or by C-term mark
                     end = index
+#                    if regex[index+1] == '$':
+#                        end = None
+#                        continue
+#                        end = index + 1
                     characters.append([start,end])
                     start = None
                     end = None
@@ -102,13 +138,17 @@ def unnested_characters(regex):
                 end = None
         elif character == ']':  # end of variable position
             has_brackets = False
-        elif character == '(':  # start of group or position of interest
+        elif character == '(':  # start of group or position of interest, marking end of region
             if start != None:
                 end = index - 1
                 characters.append([start,end])
                 start = None
                 end = None
         elif character == ')':  # end of group or position of interest
+            if has_parentheses:  # if reading inside group or position of interest
+                end = index
+                characters.append([start,end])
+                has_parentheses = False
             start = None
             end = None
         elif character == '$' and not has_brackets:  # C-term
@@ -122,7 +162,11 @@ def unnested_characters(regex):
             else:
                 if has_braces:
                     if character == '}':
-                        end = index
+#                        end = index
+                        if index < len(regex) - 1 and regex[index + 1] == '$':
+                            end = index + 1
+                        else:
+                            end = index
                         characters.append([start,end])
                         has_braces = False
                         start = None
@@ -148,7 +192,8 @@ def merge_marks(marks1,marks2):
             merged_marks[index] = character
     return ''.join(merged_marks)
 
-if __name__ == "__main__":
+#if __name__ == "__main__":
+def temp():
     args = get_args()
     print args.regex
     brackets = unnested_brackets(args.regex)
@@ -162,4 +207,20 @@ if __name__ == "__main__":
     characters_marks = mark_positions(args.regex,characters,'*')
     all_marks = merge_marks(all_marks,characters_marks)
     print all_marks
+
+if __name__ == "__main__":
+    args = get_args()
+    print args.regex
+    characters = unnested_characters(args.regex)
+    characters_marks = mark_positions(args.regex,characters,'*')
+    brackets = unnested_brackets(args.regex)
+    brackets_marks = mark_positions(args.regex,brackets,'!')
+    parentheses, parentheses_alt = unnested_parentheses(args.regex)
+    parentheses_marks = mark_positions(args.regex,parentheses,';')
+    parentheses_alt_marks = mark_positions(args.regex,parentheses_alt,':')
+    all_marks = merge_marks(brackets_marks,characters_marks)
+    all_marks = merge_marks(all_marks,parentheses_marks)
+    all_marks = merge_marks(all_marks,parentheses_alt_marks)
+    print all_marks
+
 
