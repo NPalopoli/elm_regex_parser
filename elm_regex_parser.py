@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import argparse
+from Bio import SeqUtils
 from collections import OrderedDict
 
 def get_args(argv=None):
@@ -35,7 +36,7 @@ def unnested_parentheses(regex):
 #                parentheses.remove(sublist)
     parentheses_alt.append(alt)
     return parentheses, parentheses_alt
-    
+
 def unnested_brackets(regex):
     '''Expressions in brackets.'''
     brackets = []
@@ -193,22 +194,65 @@ def merge_marks(marks1,marks2):
             merged_marks[index] = character
     return ''.join(merged_marks)
 
-def possible_aa(
+def accepted_aa(aa_options):
+    '''Return string of accepted amino acids.'''
+    aa_list = SeqUtils.IUPACData.protein_letters
+    if '^' in aa_options:
+        accepted_aa_str = ''.join([ aa for aa in aa_list if aa not in aa_options ])
+    else:
+        accepted_aa_str = ''.join([ aa for aa in aa_list if aa in aa_options ])
+    return accepted_aa_str
+
+def wildcard_aa():
+    '''Return string of all amino acids.'''
+    aa_list = SeqUtils.IUPACData.protein_letters
+    return ''.join([ aa for aa in aa_list ])
+
+def expand_wildcard(regex):
+    '''Replace wildcard in regex by [all-aa]'''
+    new_regex = []
+    for char in regex:
+        if char == '.':
+            new_regex.append(wildcard_aa())
+        else:
+            new_regex.append(char)
+    return new_regex
 
 def expand_brackets(regex,marks):
-    '''Make all possible combinations of regex by expanding brackets.'''
+    '''Make dict with all possible combinations of regex by expanding brackets.'''
     pos_elements = OrderedDict()
+    aa_options = []
+    start = False
     for index,character in enumerate(marks):
-        start = False
         if character == '!':
-            aa_options = []
             start = not(start)
+            if not start:
+                pos_elements[index] = accepted_aa(aa_options)
+                aa_options = []
         else:
-           pos_elements[index] = regex[index] 
-        if start:
-            aa_options.append(regex)
+            if start:
+                aa_options.append(regex[index])
+            else:
+                pos_elements[index] = regex[index]
+    return pos_elements
 
-#if __name__ == "__main__":
+def expand_pipe(regex,marks):
+    '''Make copies of regex with alternatives from pipes.'''
+
+
+def expand_parentheses(regex,marks):
+    '''Make copies of regex with alternatives from parentheses and pipes.'''
+    pos_elements = OrderedDict()
+    aa_options = []
+    start = False
+    for index,character in enumerate(marks):
+        if character == ';':
+            start = not(start)
+            if not start:
+
+
+'''
+if __name__ == "__main__":
 def temp():
     args = get_args()
     print args.regex
@@ -223,6 +267,7 @@ def temp():
     characters_marks = mark_positions(args.regex,characters,'*')
     all_marks = merge_marks(all_marks,characters_marks)
     print all_marks
+'''
 
 if __name__ == "__main__":
     args = get_args()
@@ -238,5 +283,11 @@ if __name__ == "__main__":
     all_marks = merge_marks(all_marks,parentheses_marks)
     all_marks = merge_marks(all_marks,parentheses_alt_marks)
     print all_marks
+    regex_no_wildcard = expand_wildcard(args.regex)
+    print regex_no_wildcard
+#    pos_elements = expand_brackets(args.regex,all_marks)
+    pos_elements = expand_brackets(regex_no_wildcard,all_marks)
+    for key,value in pos_elements.items():
+        print(key,value)
 
 
