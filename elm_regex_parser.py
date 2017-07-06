@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import argparse
+from collections import OrderedDict
 
 def get_args(argv=None):
     parser = argparse.ArgumentParser(description='Mark each position in an ELM Regular Expression as fixed, variable or wildcard.')
@@ -191,6 +192,21 @@ def merge_marks(marks1,marks2):
         if merged_marks[index] == ' ':
             merged_marks[index] = character
     return ''.join(merged_marks)
+
+def possible_aa(
+
+def expand_brackets(regex,marks):
+    '''Make all possible combinations of regex by expanding brackets.'''
+    pos_elements = OrderedDict()
+    for index,character in enumerate(marks):
+        start = False
+        if character == '!':
+            aa_options = []
+            start = not(start)
+        else:
+           pos_elements[index] = regex[index] 
+        if start:
+            aa_options.append(regex)
 
 #if __name__ == "__main__":
 def temp():
