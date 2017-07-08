@@ -236,11 +236,11 @@ def expand_brackets(regex,marks):
                 pos_elements[index] = regex[index]
     return pos_elements
 
-def expand_pipe(regex,marks):
+def expand_pipe_alt(regex,marks):
     '''Make copies of regex with alternatives from pipes.'''
 
 
-def expand_parentheses(regex,marks):
+def expand_parentheses_alt(regex,marks):
     '''Make copies of regex with alternatives from parentheses and pipes.'''
     pos_elements = OrderedDict()
     aa_options = []
@@ -249,7 +249,63 @@ def expand_parentheses(regex,marks):
         if character == ';':
             start = not(start)
             if not start:
+               pass 
 
+def old_expand_parentheses(regex,marks):
+    '''Split regex on sections marked by parentheses without alternatives.'''
+    regex_sections = []
+    index_starts = []
+    index_ends = []
+    index_pairs = []
+    for index,character in enumerate(marks):
+        if character == ';':
+            if regex[index] == '(':
+                index_starts.append(index)
+            elif regex[index] == ')':
+                index_ends.append(index)
+    index_pairs = zip(index_starts,index_ends)
+    if index_pairs:
+        for number,pair in enumerate(index_pairs):
+            start = pair[0]
+            end = pair[1]
+            if not regex_sections and int(start) != 0:
+                regex_sections.append(regex[0:start])
+            regex_sections.append(regex[start+1:end])
+            if len(index_pairs) > 1 and len(index_pairs) > end + 1:  # more than one pair and current pair does not end in last position
+                regex_sections.append(regex[end+1:index_pairs[number+1][0]])
+        end = int(index_pairs[-1][1])
+        end_regex = len(marks)-1
+        if end != end_regex:
+#    if int(end) not (len(marks)-1):
+            regex_sections.append(regex[end+1:len(marks)])
+    return regex_sections
+
+def expand_parentheses(regex,marks):
+    '''Split regex on list of sections marked by parentheses without alternatives.'''
+    regex_sections = []
+    index_starts = []
+    index_ends = []
+    index_pairs = []
+    marks_characters = list(marks)
+    if ';' not in marks_characters:
+        regex_sections.append(regex)
+        return regex_sections  # return regex as list if no parentheses without alternatives to remove
+    mark_positions = [index for index, item in enumerate(marks_characters) if ';' == item]
+    if mark_positions:
+        if int(0) not in mark_positions:  # start from beginning
+            mark_positions.insert(0,int(0))
+        end_regex = len(marks)-1  # finish at end
+        if end_regex not in mark_positions:
+            mark_positions.append(end_regex+1)
+        for index,position in enumerate(mark_positions):  # extract sections separated by parentheses without alternatives
+            if index == 0:
+                prev_position = position
+                pass
+            else:
+                regex_sections.append(regex[prev_position+1:position])
+                prev_position = position
+    return regex_sections  # return list of regex sections separated by parentheses without alternatives
+    
 
 '''
 if __name__ == "__main__":
@@ -285,6 +341,9 @@ if __name__ == "__main__":
     print all_marks
     regex_no_wildcard = expand_wildcard(args.regex)
     print regex_no_wildcard
+    regex_split = expand_parentheses(args.regex,all_marks)
+    print regex_split
+    print '---------------------------------------------------------'
 #    pos_elements = expand_brackets(args.regex,all_marks)
     pos_elements = expand_brackets(regex_no_wildcard,all_marks)
     for key,value in pos_elements.items():
