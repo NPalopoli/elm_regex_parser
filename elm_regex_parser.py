@@ -283,13 +283,15 @@ def old_expand_parentheses(regex,marks):
 def expand_parentheses(regex,marks):
     '''Split regex on list of sections marked by parentheses without alternatives.'''
     regex_sections = []
+    marks_sections = []
     index_starts = []
     index_ends = []
     index_pairs = []
     marks_characters = list(marks)
     if ';' not in marks_characters:
         regex_sections.append(regex)
-        return regex_sections  # return regex as list if no parentheses without alternatives to remove
+        marks_sections.append(marks)
+        return regex_sections,marks_sections  # return regex and marks as tuple of lists if no parentheses without alternatives to remove
     mark_positions = [index for index, item in enumerate(marks_characters) if ';' == item]
     if mark_positions:
         if int(0) not in mark_positions:  # start from beginning
@@ -299,32 +301,15 @@ def expand_parentheses(regex,marks):
             mark_positions.append(end_regex+1)
         for index,position in enumerate(mark_positions):  # extract sections separated by parentheses without alternatives
             if index == 0:
-                prev_position = position
-                pass
+                prev_position = position-1
             else:
-                regex_sections.append(regex[prev_position+1:position])
+                if prev_position+1 != position:
+                    regex_sections.append(regex[prev_position+1:position])
+                    marks_sections.append(marks[prev_position+1:position])
                 prev_position = position
-    return regex_sections  # return list of regex sections separated by parentheses without alternatives
-    
+    return regex_sections,marks_sections  # return tuple with lists of regex and marks sections separated by parentheses without alternatives
 
-'''
-if __name__ == "__main__":
-def temp():
-    args = get_args()
-    print args.regex
-    brackets = unnested_brackets(args.regex)
-    brackets_marks = mark_positions(args.regex,brackets,'!')
-    parentheses, parentheses_alt = unnested_parentheses(args.regex)
-    parentheses_marks = mark_positions(args.regex,parentheses,';')
-    all_marks = merge_marks(brackets_marks,parentheses_marks)
-    parentheses_alt_marks = mark_positions(args.regex,parentheses_alt,':')
-    all_marks = merge_marks(all_marks,parentheses_alt_marks)
-    characters = unnested_characters(args.regex)
-    characters_marks = mark_positions(args.regex,characters,'*')
-    all_marks = merge_marks(all_marks,characters_marks)
-    print all_marks
-'''
-
+''' 
 if __name__ == "__main__":
     args = get_args()
     print args.regex
@@ -339,14 +324,48 @@ if __name__ == "__main__":
     all_marks = merge_marks(all_marks,parentheses_marks)
     all_marks = merge_marks(all_marks,parentheses_alt_marks)
     print all_marks
-    regex_no_wildcard = expand_wildcard(args.regex)
-    print regex_no_wildcard
     regex_split = expand_parentheses(args.regex,all_marks)
     print regex_split
+    regex_no_wildcard = expand_wildcard(args.regex)
+    print regex_no_wildcard
     print '---------------------------------------------------------'
 #    pos_elements = expand_brackets(args.regex,all_marks)
     pos_elements = expand_brackets(regex_no_wildcard,all_marks)
     for key,value in pos_elements.items():
         print(key,value)
+'''
 
-
+if __name__ == "__main__":
+    args = get_args()
+    print '---------------------------------------------------------'
+    print args.regex
+    characters = unnested_characters(args.regex)
+    characters_marks = mark_positions(args.regex,characters,'*')
+    brackets = unnested_brackets(args.regex)
+    brackets_marks = mark_positions(args.regex,brackets,'!')
+    parentheses, parentheses_alt = unnested_parentheses(args.regex)
+    parentheses_marks = mark_positions(args.regex,parentheses,';')
+    parentheses_alt_marks = mark_positions(args.regex,parentheses_alt,':')
+    all_marks = merge_marks(brackets_marks,characters_marks)
+    all_marks = merge_marks(all_marks,parentheses_marks)
+    all_marks = merge_marks(all_marks,parentheses_alt_marks)
+    print all_marks
+    regex_split,marks_split = expand_parentheses(args.regex,all_marks)
+    print regex_split
+    regex_dict = OrderedDict()
+    regex_index = 0
+    for number,section in enumerate(regex_split):
+        regex_no_wildcard = expand_wildcard(section)
+        print regex_no_wildcard
+#    pos_elements = expand_brackets(args.regex,all_marks)
+#        pos_elements = expand_brackets(regex_no_wildcard,all_marks)
+        pos_elements = expand_brackets(regex_no_wildcard,marks_split[number])
+#        pos_elements = expand_brackets(section,marks_split[number])
+        for key,value in pos_elements.items():
+            print(key,value)
+            regex_dict[regex_index] = value
+            regex_index += 1
+    print('================')
+    for key,value in regex_dict.items():
+        print(key,value) 
+    print('================')
